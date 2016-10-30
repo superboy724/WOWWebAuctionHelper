@@ -22,8 +22,8 @@ var AuctionHelper = {
                 sourceType:0,
                 duration:0,//0为12小时，1为24小时,2为48小时
                 stacks:1,//上1堆，通过循环批量上
-                buyout:wowCurrency.WowCurrencyToInt(),//一口价
-                bid:wowCurrency.WowCurrencyToInt(),//竞拍价
+                buyout:wowCurrency.WowCurrencyToInt() * quantity,//一口价
+                bid:wowCurrency.WowCurrencyToInt() * quantity,//竞拍价
                 type:"perItem",
                 ticket:auctionHelper.GetTicket($("#form-itemid").val()),//获取ticker
                 xstoken:auctionHelper.token//获取token
@@ -88,7 +88,7 @@ var Tools = {
     GetCookie:function(name){
         var allcookies = document.cookie;
         var cookie_pos = allcookies.indexOf(name);   //索引的长度
-    
+
         // 如果找到了索引，就代表cookie存在，
         // 反之，就说明不存在。
         if (cookie_pos != -1)
@@ -96,12 +96,12 @@ var Tools = {
             // 把cookie_pos放在值的开始，只要给值加1即可。
             cookie_pos += name.length + 1;      //这里容易出问题，所以请大家参考的时候自己好好研究一下
             var cookie_end = allcookies.indexOf(";", cookie_pos);
-    
+
             if (cookie_end == -1)
             {
                 cookie_end = allcookies.length;
             }
-    
+
             var value = unescape(allcookies.substring(cookie_pos, cookie_end));         //这里就可以得到你想要的cookie的值了。。。
         }
         return value;
@@ -121,7 +121,7 @@ var WowCurrency = {
             return intvalue;
         };
         return wowCurrency;
-        
+
     },
     IntParseWowCurrency : function(intvalue){
         var money = intvalue;
@@ -150,7 +150,7 @@ var Log = {
 (function() {
     'use strict';
     $("#profile-sidebar-menu").html($("#profile-sidebar-menu").html() + '<li class=""><a class="" rel="np" id="startauctionhelper"><span class="arrow"><span class="icon">启用插件</span></span></a></li>');
-    
+
     document.getElementById("startauctionhelper").addEventListener('click', function (e) {
         //初始化
         //添加ID输入框
@@ -164,69 +164,69 @@ var Log = {
         Log.Append("wow拍卖插件已经启动");
         //绑定
         document.getElementById("button-auctionhelper-create").addEventListener('click', function (e) {
-                var auctionHelper = AuctionHelper.Create();
-                var itemid = "";
-                var quantity = "";
-                var stacks = "";
-                var youprice = "";
-                var count = 0;
-                var minprice = "";
-                itemid = $("#form-itemid").val();
-                quantity = $("#form-quantity").val();
-                stacks= $("#form-stacks").val();
-                youprice = WowCurrency.Create($("#form-buyoutGold").val(),$("#form-buyoutSilver").val(),$("#form-buyoutCopper").val());
-                minprice = WowCurrency.Create($("#minGold").val(),$("#minSilver").val(),$("#minCopper").val());
-                Log.Append("成功获取信息");
-                //开始执行
-                //执行第一次
+            var auctionHelper = AuctionHelper.Create();
+            var itemid = "";
+            var quantity = "";
+            var stacks = "";
+            var youprice = "";
+            var count = 0;
+            var minprice = "";
+            itemid = $("#form-itemid").val();
+            quantity = $("#form-quantity").val();
+            stacks= $("#form-stacks").val();
+            youprice = WowCurrency.Create($("#form-buyoutGold").val(),$("#form-buyoutSilver").val(),$("#form-buyoutCopper").val());
+            minprice = WowCurrency.Create($("#minGold").val(),$("#minSilver").val(),$("#minCopper").val());
+            Log.Append("成功获取信息");
+            //开始执行
+            //执行第一次
+            count++;
+            Log.Append("开始执行第"+count+"次");
+            for(var x=0;x<=Number(stacks)-1;x++){
+                Log.Append("上架第"+Number(x)+"组");
+                auctionHelper.CreateItem(itemid,youprice,Number(quantity));
+            }
+            //自动循环
+            var timer = setInterval(function(){
                 count++;
                 Log.Append("开始执行第"+count+"次");
-                for(var x=0;x<=Number(stacks)-1;x++){
-                    Log.Append("上架第"+Number(x)+"组");
-                    auctionHelper.CreateItem(itemid,youprice,Number(quantity));
+                //检查拍卖价格
+                var minp = auctionHelper.GetSimilar(itemid);
+                Log.Append("检测到拍卖行价格:"+minp.WowCurrencyToInt());
+                if(minp.WowCurrencyToInt() < youprice.WowCurrencyToInt() ){
+                    Log.Append("正在下架");
+                    //下架
+                    auctionHelper.Cancel(itemid);
+                    //压一铜
+                    youprice = WowCurrency.IntParseWowCurrency(minp.WowCurrencyToInt()-1);
+                    //如果低于设定价
+                    if(youprice.WowCurrencyToInt() < minprice.WowCurrencyToInt()){
+                        Log.Append("价格过低，脚本停止工作");
+                        window.clearInterval(timer); 
+                        return;
+                    }
+                    else{
+                        Log.Append("开始上架");
+                        for(var y=0;y<=Number(stacks)-1;y++){
+                            Log.Append("上架第"+Number(y)+"组");
+                            auctionHelper.CreateItem(itemid,youprice,Number(quantity));
+                        }
+                    }
                 }
-                //自动循环
-                var timer = setInterval(function(){
-                        count++;
-                        Log.Append("开始执行第"+count+"次");
-                        //检查拍卖价格
-                        var minp = auctionHelper.GetSimilar(itemid);
-                        Log.Append("检测到拍卖行价格:"+minp.WowCurrencyToInt());
-                        if(minp.WowCurrencyToInt() < youprice.WowCurrencyToInt() ){
-                            Log.Append("正在下架");
-                            //下架
-                            auctionHelper.Cancel(itemid);
-                            //压一铜
-                            youprice = WowCurrency.IntParseWowCurrency(minp.WowCurrencyToInt()-1);
-                            //如果低于设定价
-                            if(youprice.WowCurrencyToInt() < minprice.WowCurrencyToInt()){
-                                Log.Append("价格过低，脚本停止工作");
-                                window.clearInterval(timer); 
-                                return;
-                            }
-                            else{
-                                Log.Append("开始上架");
-                                for(var y=0;y<=Number(stacks)-1;y++){
-                                    Log.Append("上架第"+Number(y)+"组");
-                                    auctionHelper.CreateItem(itemid,youprice,Number(quantity));
-                                }
-                            }
+                else{
+                    Log.Append("当前价格无需压价");
+                    Log.Append("检测商品数量");
+                    var stackcount = auctionHelper.GetItemCount(itemid,Number(stacks));
+                    if(stackcount > 0){
+                        Log.Append("需上架"+stackcount+"组,开始上架");
+                        for(var y=0;y<=Number(stackcount)-1;y++){
+                            Log.Append("上架第"+Number(y)+"组");
+                            auctionHelper.CreateItem(itemid,youprice,Number(quantity));
                         }
-                        else{
-                            Log.Append("当前价格无需压价");
-                            Log.Append("检测商品数量");
-                            var stackcount = auctionHelper.GetItemCount(itemid,Number(stacks));
-                            if(stackcount > 0){
-                                Log.Append("需上架"+stackcount+"组,开始上架");
-                                for(var y=0;y<=Number(stackcount)-1;y++){
-                                    Log.Append("上架第"+Number(y)+"组");
-                                    auctionHelper.CreateItem(itemid,youprice,Number(quantity));
-                                }
-                            }else{
-                                Log.Append("无需额外上架");
-                            }
-                        }
-                    },100000);
-                }, false);
+                    }else{
+                        Log.Append("无需额外上架");
+                    }
+                }
+            },100000);
         }, false);
+    }, false);
 })();
